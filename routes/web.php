@@ -16,7 +16,11 @@ use App\Http\Controllers\ParentDashboardController;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return response()->json([
+        'status' => 'success',
+        'message' => 'NBIS Backend API is running successfully!',
+        'version' => '1.0.0'
+    ]);
 });
 
 // NBIS React demo (no auth) — Admin & Police dashboards
