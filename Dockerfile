@@ -25,3 +25,4 @@ RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/apache2.con
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 EXPOSE 80
+CMD php artisan migrate --force && apache2-foreground
