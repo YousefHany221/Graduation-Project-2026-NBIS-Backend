@@ -28,6 +28,25 @@ Route::get('/demo/{any?}', function () {
     return view('demo-react');
 })->where('any', '.*')->name('demo');
 
+
+
+use Illuminate\Support\Facades\Artisan;
+
+Route::get('/run-migrate', function () {
+    try {
+        Artisan::call('migrate --force');
+        return response()->json([
+            'status' => 'success',
+            'output' => Artisan::output()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
+
 // Web dashboard routes disabled - using React frontend
 // Uncomment these if you need Blade-based dashboards
 /*
