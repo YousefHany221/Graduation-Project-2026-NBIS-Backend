@@ -14,7 +14,8 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 COPY . /var/www/html
 
 # 4. تشغيل الـ Composer لتثبيت مكاتب الـ vendor أونلاين
-RUN composer install --no-dev --optimize-autoloader --no-scripts --allow-plugins
+# 4. تشغيل الـ Composer وتخطي مشاكل تضارب الإصدارات أو الـ Extensions الناقصة
+RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
 
 # 5. تعديل مسار Apache ليوجه لفولدر public
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
