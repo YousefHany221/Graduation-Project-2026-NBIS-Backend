@@ -1,13 +1,12 @@
 import axios from 'axios';
 
 const client = axios.create({
-  // 1. كتبنا الرابط صريح عشان نقطع الشك باليقين وتتحل الـ 404
-  baseURL: 'http://127.0.0.1:8000/api',
+  // ✅ عدلنا الرابط هنا عشان يكلم السيرفر الأونلاين مباشرة
+  baseURL: 'https://graduation-project-2026-nbis-backend-2.onrender.com/api',
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
   },
-  // 2. زودنا السطر ده عشان الـ Laravel يقبل الطلب ويمرر الجلسة
   withCredentials: true
 });
 
