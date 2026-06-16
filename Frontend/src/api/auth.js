@@ -1,12 +1,16 @@
-import client from './client';
+import client, { ensureCsrf } from './client'; // ✅ تم إضافة ensureCsrf هنا
 
 export const authService = {
   login: async (credentials) => {
+    // 🔒 اطلب الـ CSRF Cookie أولاً لتأمين المتصفح أونلاين ومنع الـ CORS
+    await ensureCsrf();
     const response = await client.post('/login', credentials);
     return response.data;
   },
 
   register: async (data) => {
+    // 🔒 اطلب الـ CSRF Cookie أولاً لتأمين عمليات التسجيل الجديدة أونلاين
+    await ensureCsrf();
     const response = await client.post('/register', data);
     return response.data;
   },
