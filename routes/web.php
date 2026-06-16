@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\BabyController;
 use App\Http\Controllers\PoliceController;
 use App\Http\Controllers\AdminDashboardController;
@@ -30,7 +31,7 @@ Route::get('/demo/{any?}', function () {
 
 
 
-use Illuminate\Support\Facades\Artisan;
+
 
 Route::get('/run-migrate', function () {
     try {
@@ -45,6 +46,18 @@ Route::get('/run-migrate', function () {
             'message' => $e->getMessage()
         ], 500);
     }
+
+});
+
+Route::get('/clear-everything-nbis', function () {
+    Artisan::call('config:clear');
+    Artisan::call('cache:clear');
+    Artisan::call('route:clear');
+    return response()->json([
+        'status' => 'success',
+        'message' => 'All caches cleared successfully, Yousef!'
+    ]);
+
 });
 
 // Web dashboard routes disabled - using React frontend
