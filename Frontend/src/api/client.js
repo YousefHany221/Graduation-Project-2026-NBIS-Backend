@@ -1,19 +1,21 @@
 import axios from 'axios';
 
+// ✅ توحيد الرابط على السيرفر الشغال والمستقر (backend-1)
+const SERVER_URL = 'https://graduation-project-2026-nbis-backend-1.onrender.com';
+
 const client = axios.create({
-  // ✅ الرابط الأونلاين المظبوط للـ API
-  baseURL: 'https://graduation-project-2026-nbis-backend-2.onrender.com/api',
+  // الرابط الأونلاين الموحد للـ API
+  baseURL: `${SERVER_URL}/api`,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
   },
-  withCredentials: true // ✅ أساسية جداً لنقل الكوكيز والـ Tokens بين الدومينات أونلاين
+  withCredentials: true // أساسية جداً لنقل الكوكيز والـ Tokens بين الدومينات أونلاين
 });
 
-// 🔒 دالة سحرية لطلب الـ CSRF Token قبل الـ Login أو الـ Register لمنع الـ CORS/CSRF Block
+// 🔒 طلب الـ CSRF Token من نفس السيرفر بالظبط قبل الـ Login أو الـ Register لمنع الـ CORS Block
 export const ensureCsrf = () => {
-  // بنطلبها من مسار الـ sanctum مباشرة (بره الـ /api)
-  return axios.get('https://graduation-project-2026-nbis-backend-2.onrender.com/sanctum/csrf-cookie', {
+  return axios.get(`${SERVER_URL}/sanctum/csrf-cookie`, {
     withCredentials: true
   });
 };
@@ -26,7 +28,7 @@ client.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Let the browser set proper multipart boundaries for FormData (للأقسام اللي فيها رفع بصمات أو صور)
+    // السماح للمتصفح بتحديد الحدود المناسبة لـ FormData (مهم لرفع بصمات المواليد والصور)
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
@@ -45,7 +47,7 @@ client.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('nbis_token');
       localStorage.removeItem('nbis_user');
-      // ✅ عدلنا دي عشان تتماشى مع الـ Netlify Redirects اللي عملناها ومن غير ما تضرب 404
+      // التوجيه لصفحة الـ login بالتوافق مع Netlify Redirects
       window.location.href = '/login';
     }
     return Promise.reject(error);
