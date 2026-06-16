@@ -822,260 +822,262 @@ button {
 
 <!-- ═══════════════════════════ SCRIPT ═════════════════════════════ -->
 <script>
-(() => {
-  "use strict";
+  (() => {
+    "use strict";
 
-  const API = "http://127.0.0.1:8000";
-  const $   = (id) => document.getElementById(id);
+    // ✅ 1. تم تعديل الرابط ليتصل مباشرة بسيرفر ريندر الأونلاين
+    const API = "https://graduation-project-2026-nbis-backend-2.onrender.com/api";
+    const $ = (id) => document.getElementById(id);
 
-  const state = {
-    total: 0, matches: 0, noMatches: 0,
-    activity: [], selected: null, scanning: false,
-    backendOnline: false,
-  };
-
-  // ─── Chart.js ────────────────────────────────────────────────────
-  const chart = new Chart($("scanChart"), {
-    type: "doughnut",
-    data: {
-      labels: ["Match", "No match"],
-      datasets: [{
-        data: [0, 0],
-        backgroundColor: ["#16a34a", "#dc2626"],
-        borderColor: "#ffffff",
-        borderWidth: 2,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "bottom",
-          labels: { color: "#5b6b82", font: { size: 12 }, boxWidth: 12 },
-        },
-      },
-      cutout: "68%",
-    },
-  });
-
-  // ─── Toasts ──────────────────────────────────────────────────────
-  function toast(message, kind = "info", ttl = 4000) {
-    const el = document.createElement("div");
-    el.className = `toast ${kind}`;
-    el.textContent = message;
-    $("toastHost").appendChild(el);
-    setTimeout(() => {
-      el.style.animation = "slide-in 0.25s ease-in reverse";
-      setTimeout(() => el.remove(), 250);
-    }, ttl);
-  }
-
-  // ─── Dropzone ────────────────────────────────────────────────────
-  const dropzone  = $("dropzone");
-  const fileInput = $("fileInput");
-  const preview   = $("preview");
-  const dzInner   = $("dzInner");
-
-  dropzone.addEventListener("click", () => fileInput.click());
-
-  ["dragenter", "dragover"].forEach((ev) =>
-    dropzone.addEventListener(ev, (e) => {
-      e.preventDefault();
-      dropzone.classList.add("dragover");
-    })
-  );
-
-  ["dragleave", "drop"].forEach((ev) =>
-    dropzone.addEventListener(ev, (e) => {
-      e.preventDefault();
-      dropzone.classList.remove("dragover");
-    })
-  );
-
-  dropzone.addEventListener("drop", (e) => {
-    const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
-  });
-
-  fileInput.addEventListener("change", (e) => {
-    const f = e.target.files[0];
-    if (f) setFile(f);
-  });
-
-  function setFile(file) {
-    if (!file.type.startsWith("image/")) {
-      toast("Not an image file.", "error");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast("File exceeds 10 MB.", "error");
-      return;
-    }
-    state.selected = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      preview.src = e.target.result;
-      preview.classList.add("show");
-      dzInner.classList.add("hidden");
+    const state = {
+      total: 0, matches: 0, noMatches: 0,
+      activity: [], selected: null, scanning: false,
+      backendOnline: false,
     };
-    reader.readAsDataURL(file);
-    $("scanBtn").disabled = false;
-  }
 
-  $("clearBtn").addEventListener("click", () => {
-    state.selected = null;
-    fileInput.value = "";
-    preview.src = "";
-    preview.classList.remove("show");
-    dzInner.classList.remove("hidden");
-    $("scanBtn").disabled = true;
-    $("resultBody").classList.add("hidden");
-    $("resultEmpty").classList.remove("hidden");
-    $("latencyTag").textContent = "";
-    $("topkList").innerHTML = '<div class="empty-hint">No scan yet</div>';
-  });
-
-  // ─── Scan action ─────────────────────────────────────────────────
-  $("scanBtn").addEventListener("click", doScan);
-
-  async function doScan() {
-    if (!state.selected || state.scanning) return;
-    if (!state.backendOnline) {
-      toast("Backend is offline.", "error");
-      return;
-    }
-
-    state.scanning = true;
-    $("scanBtn").disabled = true;
-    $("spinner").classList.remove("hidden");
-
-    const form = new FormData();
-    form.append("file", state.selected);
-
-    try {
-      const r = await fetch(`${API}/identify`, { method: "POST", body: form });
-      if (!r.ok) {
-        const err = await safeJson(r);
-        throw new Error(err?.detail || `HTTP ${r.status}`);
-      }
-      const result = await r.json();
-      renderResult(result);
-      pushActivity(result);
-      updateStats(result);
-    } catch (err) {
-      console.error(err);
-      toast(`Scan failed: ${err.message}`, "error");
-    } finally {
-      state.scanning = false;
-      $("scanBtn").disabled = false;
-      $("spinner").classList.add("hidden");
-    }
-  }
-
-  async function safeJson(r) {
-    try { return await r.json(); } catch { return null; }
-  }
-
-  // ─── Rendering ───────────────────────────────────────────────────
-  function txt(id, value, fallback = "—") {
-    const el = $(id);
-    if (value === null || value === undefined || value === "") {
-      el.textContent = fallback;
-      el.classList.add("placeholder");
-    } else {
-      el.textContent = value;
-      el.classList.remove("placeholder");
-    }
-  }
-
-  function renderResult(r) {
-    $("resultEmpty").classList.add("hidden");
-    $("resultBody").classList.remove("hidden");
-
-    const isMatch = r.status === "MATCH";
-    const banner = $("statusBanner");
-    banner.classList.remove("match", "nomatch");
-    banner.classList.add(isMatch ? "match" : "nomatch");
-    $("statusBannerText").textContent =
-      isMatch ? "✓ Match found" : "✕ Unknown fingerprint";
-    $("statusBannerConf").textContent = `${r.confidence?.toFixed(2) ?? "—"}%`;
-
-    // Biometric summary
-    txt("rIdentity", r.identity_id);
-    txt("rSubject",  r.subject_id);
-    txt("rHand",     r.hand);
-    txt("rFinger",   r.finger);
-    txt("rSim",      r.similarity?.toFixed(4));
-    txt("rThresh",   r.threshold?.toFixed(4));
-
-    $("latencyTag").textContent =
-      r.latency_ms ? `${r.latency_ms.toFixed(0)} ms` : "";
-
-    // DB record sections — show only if we have a match + a DB block
-    const db = r.database;
-    const hasDb = isMatch && db && typeof db === "object";
-    ["secChild", "secFather", "secMother", "secHospital"].forEach((id) => {
-      $(id).style.display = hasDb ? "" : "none";
+    // ─── Chart.js ────────────────────────────────────────────────────
+    const chart = new Chart($("scanChart"), {
+      type: "doughnut",
+      data: {
+        labels: ["Match", "No match"],
+        datasets: [{
+          data: [0, 0],
+          backgroundColor: ["#16a34a", "#dc2626"],
+          borderColor: "#ffffff",
+          borderWidth: 2,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { color: "#5b6b82", font: { size: 12 }, boxWidth: 12 },
+          },
+        },
+        cutout: "68%",
+      },
     });
 
-    if (hasDb) {
-      // Child
-      const c = db.child || {};
-      txt("cName",   c.name);
-      txt("cSid",    c.subject_id);
-      txt("cGender", c.gender);
-      txt("cBirth",  c.birth_datetime);
-      txt("cWeight", c.weight_kg);
-      txt("cBlood",  c.blood_group);
-
-      // Father
-      const f = db.father || {};
-      txt("fName",  f.name);
-      txt("fNid",   f.national_id);
-      txt("fBirth", f.birth_date);
-      txt("fBlood", f.blood_group);
-      txt("fPhone", f.phone);
-      txt("fEmail", f.email);
-      txt("fCity",  f.city);
-
-      // Mother
-      const m = db.mother || {};
-      txt("mName",  m.name);
-      txt("mNid",   m.national_id);
-      txt("mBirth", m.birth_date);
-      txt("mBlood", m.blood_group);
-      txt("mPhone", m.phone);
-      txt("mEmail", m.email);
-      txt("mCity",  m.city);
-
-      // Hospital
-      const h = db.hospital || {};
-      txt("hName",    h.name);
-      txt("hCity",    h.city);
-      txt("hPhone",   h.phone);
-      txt("hAddress", h.address);
+    // ─── Toasts ──────────────────────────────────────────────────────
+    function toast(message, kind = "info", ttl = 4000) {
+      const el = document.createElement("div");
+      el.className = `toast ${kind}`;
+      el.textContent = message;
+      $("toastHost").appendChild(el);
+      setTimeout(() => {
+        el.style.animation = "slide-in 0.25s ease-in reverse";
+        setTimeout(() => el.remove(), 250);
+      }, ttl);
     }
 
-    renderTopK(r.top_k || [], r.identity_id);
+    // ─── Dropzone ────────────────────────────────────────────────────
+    const dropzone = $("dropzone");
+    const fileInput = $("fileInput");
+    const preview = $("preview");
+    const dzInner = $("dzInner");
 
-    if (isMatch && !hasDb) {
-      toast("DB record not available for this subject.", "warn");
-    } else if (!isMatch) {
-      toast("Unknown fingerprint — no match above threshold.", "warn");
-    }
-  }
+    dropzone.addEventListener("click", () => fileInput.click());
 
-  function renderTopK(items, matchedId) {
-    const host = $("topkList");
-    if (!items.length) {
-      host.innerHTML = '<div class="empty-hint">No candidates returned</div>';
-      return;
+    ["dragenter", "dragover"].forEach((ev) =>
+      dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        dropzone.classList.add("dragover");
+      })
+    );
+
+    ["dragleave", "drop"].forEach((ev) =>
+      dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+      })
+    );
+
+    dropzone.addEventListener("drop", (e) => {
+      const f = e.dataTransfer.files[0];
+      if (f) setFile(f);
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (f) setFile(f);
+    });
+
+    function setFile(file) {
+      if (!file.type.startsWith("image/")) {
+        toast("Not an image file.", "error");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast("File exceeds 10 MB.", "error");
+        return;
+      }
+      state.selected = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        preview.src = e.target.result;
+        preview.classList.add("show");
+        dzInner.classList.add("hidden");
+      };
+      reader.readAsDataURL(file);
+      $("scanBtn").disabled = false;
     }
-    host.innerHTML = items.map((it) => {
-      const isTop = it.rank === 1;
-      const flag  = it.identity_id && it.identity_id === matchedId ? " ✓" : "";
-      return `
+
+    $("clearBtn").addEventListener("click", () => {
+      state.selected = null;
+      fileInput.value = "";
+      preview.src = "";
+      preview.classList.remove("show");
+      dzInner.classList.remove("hidden");
+      $("scanBtn").disabled = true;
+      $("resultBody").classList.add("hidden");
+      $("resultEmpty").classList.remove("hidden");
+      $("latencyTag").textContent = "";
+      $("topkList").innerHTML = '<div class="empty-hint">No scan yet</div>';
+    });
+
+    // ─── Scan action ─────────────────────────────────────────────────
+    $("scanBtn").addEventListener("click", doScan);
+
+    async function doScan() {
+      if (!state.selected || state.scanning) return;
+      if (!state.backendOnline) {
+        toast("Backend is offline.", "error");
+        return;
+      }
+
+      state.scanning = true;
+      $("scanBtn").disabled = true;
+      $("spinner").classList.remove("hidden");
+
+      const form = new FormData();
+      form.append("file", state.selected);
+
+      try {
+        // ✅ تعديل مسار الـ identify ليكون متناسقاً مع الباك إند
+        const r = await fetch(`${API}/identify`, { method: "POST", body: form });
+        if (!r.ok) {
+          const err = await safeJson(r);
+          throw new Error(err?.detail || `HTTP ${r.status}`);
+        }
+        const result = await r.json();
+        renderResult(result);
+        pushActivity(result);
+        updateStats(result);
+      } catch (err) {
+        console.error(err);
+        toast(`Scan failed: ${err.message}`, "error");
+      } finally {
+        state.scanning = false;
+        $("scanBtn").disabled = false;
+        $("spinner").classList.add("hidden");
+      }
+    }
+
+    async function safeJson(r) {
+      try { return await r.json(); } catch { return null; }
+    }
+
+    // ─── Rendering ───────────────────────────────────────────────────
+    function txt(id, value, fallback = "—") {
+      const el = $(id);
+      if (value === null || value === undefined || value === "") {
+        el.textContent = fallback;
+        el.classList.add("placeholder");
+      } else {
+        el.textContent = value;
+        el.classList.remove("placeholder");
+      }
+    }
+
+    function renderResult(r) {
+      $("resultEmpty").classList.add("hidden");
+      $("resultBody").classList.remove("hidden");
+
+      const isMatch = r.status === "MATCH";
+      const banner = $("statusBanner");
+      banner.classList.remove("match", "nomatch");
+      banner.classList.add(isMatch ? "match" : "nomatch");
+      $("statusBannerText").textContent =
+        isMatch ? "✓ Match found" : "✕ Unknown fingerprint";
+      $("statusBannerConf").textContent = `${r.confidence?.toFixed(2) ?? "—"}%`;
+
+      // Biometric summary
+      txt("rIdentity", r.identity_id);
+      txt("rSubject", r.subject_id);
+      txt("rHand", r.hand);
+      txt("rFinger", r.finger);
+      txt("rSim", r.similarity?.toFixed(4));
+      txt("rThresh", r.threshold?.toFixed(4));
+
+      $("latencyTag").textContent =
+        r.latency_ms ? `${r.latency_ms.toFixed(0)} ms` : "";
+
+      // DB record sections — show only if we have a match + a DB block
+      const db = r.database;
+      const hasDb = isMatch && db && typeof db === "object";
+      ["secChild", "secFather", "secMother", "secHospital"].forEach((id) => {
+        $(id).style.display = hasDb ? "" : "none";
+      });
+
+      if (hasDb) {
+        // Child
+        const c = db.child || {};
+        txt("cName", c.name);
+        txt("cSid", c.subject_id);
+        txt("cGender", c.gender);
+        txt("cBirth", c.birth_datetime);
+        txt("cWeight", c.weight_kg);
+        txt("cBlood", c.blood_group);
+
+        // Father
+        const f = db.father || {};
+        txt("fName", f.name);
+        txt("fNid", f.national_id);
+        txt("fBirth", f.birth_date);
+        txt("fBlood", f.blood_group);
+        txt("fPhone", f.phone);
+        txt("fEmail", f.email);
+        txt("fCity", f.city);
+
+        // Mother
+        const m = db.mother || {};
+        txt("mName", m.name);
+        txt("mNid", m.national_id);
+        txt("mBirth", m.birth_date);
+        txt("mBlood", m.blood_group);
+        txt("mPhone", m.phone);
+        txt("mEmail", m.email);
+        txt("mCity", m.city);
+
+        // Hospital
+        const h = db.hospital || {};
+        txt("hName", h.name);
+        txt("hCity", h.city);
+        txt("hPhone", h.phone);
+        txt("hAddress", h.address);
+      }
+
+      renderTopK(r.top_k || [], r.identity_id);
+
+      if (isMatch && !hasDb) {
+        toast("DB record not available for this subject.", "warn");
+      } else if (!isMatch) {
+        toast("Unknown fingerprint — no match above threshold.", "warn");
+      }
+    }
+
+    function renderTopK(items, matchedId) {
+      const host = $("topkList");
+      if (!items.length) {
+        host.innerHTML = '<div class="empty-hint">No candidates returned</div>';
+        return;
+      }
+      host.innerHTML = items.map((it) => {
+        const isTop = it.rank === 1;
+        const flag = it.identity_id && it.identity_id === matchedId ? " ✓" : "";
+        return `
         <div class="topk-item ${isTop ? "is-top" : ""}">
           <span class="topk-rank">#${it.rank}</span>
           <div class="topk-info">
@@ -1084,85 +1086,86 @@ button {
           </div>
           <span class="topk-score">${(it.score * 100).toFixed(2)}%</span>
         </div>`;
-    }).join("");
-  }
-
-  // ─── Stats + activity ────────────────────────────────────────────
-  function updateStats(r) {
-    state.total += 1;
-    if (r.status === "MATCH") state.matches += 1; else state.noMatches += 1;
-
-    $("mTotal").textContent   = state.total;
-    $("mMatch").textContent   = state.matches;
-    $("mNoMatch").textContent = state.noMatches;
-    const rate = state.total ? (state.matches / state.total * 100) : 0;
-    $("mRate").textContent    = `${rate.toFixed(0)}%`;
-
-    chart.data.datasets[0].data = [state.matches, state.noMatches];
-    chart.update();
-  }
-
-  function pushActivity(r) {
-    state.activity.unshift({
-      status:   r.status,
-      identity: r.identity_id || "—",
-      score:    r.similarity,
-      time:     new Date().toLocaleTimeString([], {
-        hour: "2-digit", minute: "2-digit", second: "2-digit",
-      }),
-    });
-    state.activity = state.activity.slice(0, 10);
-    renderActivity();
-  }
-
-  function renderActivity() {
-    const host = $("activityList");
-    if (!state.activity.length) {
-      host.innerHTML = '<div class="empty-hint">No activity yet</div>';
-      return;
+      }).join("");
     }
-    host.innerHTML = state.activity.map((a) => {
-      const k     = a.status === "MATCH" ? "match" : "nomatch";
-      const label = a.status === "MATCH" ? "MATCH" : "NO MATCH";
-      return `
+
+    // ─── Stats + activity ────────────────────────────────────────────
+    function updateStats(r) {
+      state.total += 1;
+      if (r.status === "MATCH") state.matches += 1; else state.noMatches += 1;
+
+      $("mTotal").textContent = state.total;
+      $("mMatch").textContent = state.matches;
+      $("mNoMatch").textContent = state.noMatches;
+      const rate = state.total ? (state.matches / state.total * 100) : 0;
+      $("mRate").textContent = `${rate.toFixed(0)}%`;
+
+      chart.data.datasets[0].data = [state.matches, state.noMatches];
+      chart.update();
+    }
+
+    function pushActivity(r) {
+      state.activity.unshift({
+        status: r.status,
+        identity: r.identity_id || "—",
+        score: r.similarity,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+        }),
+      });
+      state.activity = state.activity.slice(0, 10);
+      renderActivity();
+    }
+
+    function renderActivity() {
+      const host = $("activityList");
+      if (!state.activity.length) {
+        host.innerHTML = '<div class="empty-hint">No activity yet</div>';
+        return;
+      }
+      host.innerHTML = state.activity.map((a) => {
+        const k = a.status === "MATCH" ? "match" : "nomatch";
+        const label = a.status === "MATCH" ? "MATCH" : "NO MATCH";
+        return `
         <div class="activity-item">
           <span class="activity-badge ${k}">${label}</span>
           <span class="activity-id">${a.identity}</span>
           <span class="activity-score">${(a.score * 100).toFixed(2)}%</span>
           <span class="activity-time">${a.time}</span>
         </div>`;
-    }).join("");
-  }
-
-  // ─── Health poll ─────────────────────────────────────────────────
-  async function pollHealth() {
-    try {
-      const r = await fetch(`${API}/health`);
-      const h = await r.json();
-      const ok = h.status === "ok" && h.ready;
-      state.backendOnline = ok;
-      $("statusDot").className  = `dot ${ok ? "online" : ""}`;
-      $("statusText").textContent = ok ? "Online" : "Offline";
-      if (ok) {
-        const dbTag = h.database_available ? " · DB ✓" : " · DB ✗";
-        $("indexInfo").textContent =
-          `${h.index_size.toLocaleString()} vectors · τ=${h.threshold.toFixed(3)}${dbTag}`;
-      } else {
-        $("indexInfo").textContent = h.load_error
-          ? `load error: ${h.load_error.slice(0, 60)}…`
-          : "";
-      }
-    } catch {
-      state.backendOnline = false;
-      $("statusDot").className  = "dot";
-      $("statusText").textContent = "Offline";
-      $("indexInfo").textContent = "";
+      }).join("");
     }
-  }
 
-  pollHealth();
-  setInterval(pollHealth, 10000);
-})();
+    // ─── Health poll ─────────────────────────────────────────────────
+    async function pollHealth() {
+      try {
+        // ✅ تعديل مسار الـ health poll ليكون متوافقاً مع الـ API الجديد
+        const r = await fetch(`${API}/health`);
+        const h = await r.json();
+        const ok = h.status === "ok" && h.ready;
+        state.backendOnline = ok;
+        $("statusDot").className = `dot ${ok ? "online" : ""}`;
+        $("statusText").textContent = ok ? "Online" : "Offline";
+        if (ok) {
+          const dbTag = h.database_available ? " · DB ✓" : " · DB ✗";
+          $("indexInfo").textContent =
+            `${h.index_size.toLocaleString()} vectors · τ=${h.threshold.toFixed(3)}${dbTag}`;
+        } else {
+          $("indexInfo").textContent = h.load_error
+            ? `load error: ${h.load_error.slice(0, 60)}…`
+            : "";
+        }
+      } catch {
+        state.backendOnline = false;
+        $("statusDot").className = "dot";
+        $("statusText").textContent = "Offline";
+        $("indexInfo").textContent = "";
+      }
+    }
+
+    pollHealth();
+    setInterval(pollHealth, 10000);
+  })();
 </script>
 </body>
 </html>
