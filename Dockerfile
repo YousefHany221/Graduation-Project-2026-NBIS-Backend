@@ -32,7 +32,9 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# امسح السطرين بتوع ENTRYPOINT و EXPOSE القدام، وحط دول مكانهم في آخر الملف:
+
 EXPOSE 80
 
-# تشغيل السكريبت السحري عند بدء الحاوية
-ENTRYPOINT ["entrypoint.sh"]
+# تشغيل السكريبت من خلال CMD عشان Render ما يتلخبطش
+CMD ["/bin/bash", "/usr/local/bin/entrypoint.sh"]
