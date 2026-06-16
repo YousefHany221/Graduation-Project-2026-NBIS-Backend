@@ -22,7 +22,7 @@ import NurseDashboard from "./pages/nurse/nurseDashboard";
 import ChildrenList from "./pages/nurse/childrenList";
 import PoliceDashboard from "./pages/police/policeDashboard";
 
-// ✅ تم تعديل الحروف هنا لـ سمول لتطابق أسماء الملفات الحقيقية عندك
+// تم تعديل الحروف لـ سمول لتطابق أسماء الملفات الحقيقية
 import ParentDashboard from "./pages/parent/parentDashboard";
 import ParentVerification from "./pages/parent/parentVerification";
 import MyChildren from "./pages/parent/mychildren";
@@ -31,8 +31,8 @@ import RegisterChildForm from "./pages/shared/RegisterChildForm";
 import VerificationLogsShared from "./pages/shared/VerificationLogs";
 import NurseLayout from "./components/nurseLayout";
 
-// ✅ تم تعديل الـ adminLayout لـ حرف سمول ليطابق اسم الملف الحقيقي
-import AdminLayout from "./components/adminLayout";
+// توحيد اسم الـ Import لـ سمول
+import adminLayout from "./components/adminLayout";
 import PoliceLayout from "./components/policeLayout";
 
 
@@ -73,7 +73,8 @@ function App() {
             path="/admin/profile"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <Profile layout={AdminLayout} />
+                {/* ✅ تعديل الاستخدام هنا ليكون سمول مطابق للـ import */}
+                <Profile layout={adminLayout} />
               </ProtectedRoute>
             }
           />
@@ -105,7 +106,8 @@ function App() {
             path="/admin/missing-children"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <VerificationLogsShared layout={AdminLayout} />
+                {/* ✅ تعديل الاستخدام هنا ليكون سمول مطابق للـ import */}
+                <VerificationLogsShared layout={adminLayout} />
               </ProtectedRoute>
             }
           />
@@ -121,7 +123,8 @@ function App() {
             path="/admin/children/register"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <RegisterChildForm layout={AdminLayout} />
+                {/* ✅ تعديل الاستخدام هنا ليكون سمول مطابق للـ import */}
+                <RegisterChildForm layout={adminLayout} />
               </ProtectedRoute>
             }
           />

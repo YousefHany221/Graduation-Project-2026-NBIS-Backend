@@ -1,15 +1,17 @@
 <?php
 
 return [
-    'paths' => ['api/*'],  // أو '*' لو عايز كل الـ routes
+    'paths' => ['api/*'],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'https://vocal-crumble-72c0bb.netlify.app/',  // ← حط domain الـ Netlify بتاعك هنا
+        'https://agent-6a3166dc6898fe1a2ec9--vocal-crumble-72c0bb.netlify.app',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://.*\.netlify\.app$#',  // يسمح لأي netlify domain
+    ],
 
     'allowed_headers' => ['*'],
 
@@ -17,5 +19,5 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,  // حولها لـ true لو بتبعت cookies
+    'supports_credentials' => false,
 ];
