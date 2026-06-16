@@ -37,8 +37,9 @@ return [
     |--------------------------------------------------------------------------
     */
     'footprint_ai' => [
-        'url' => env('FOOTPRINT_AI_URL', 'http://127.0.0.1:8000'),
-        'identify_path' => env('FOOTPRINT_AI_IDENTIFY_PATH', '/identify'),
+        // ✅ تم تعديل الرابط ليتصل مباشرة بسيرفر ريندر الأونلاين الحقيقي
+        'url' => env('FOOTPRINT_AI_URL', 'https://graduation-project-2026-nbis-backend-2.onrender.com'),
+        'identify_path' => env('FOOTPRINT_AI_IDENTIFY_PATH', '/api/identify'),
         'timeout' => (int) env('FOOTPRINT_AI_TIMEOUT', 30),
     ],
 
