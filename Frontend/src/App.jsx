@@ -21,13 +21,18 @@ import ReportMissing from "./pages/admin/reportMissing";
 import NurseDashboard from "./pages/nurse/nurseDashboard";
 import ChildrenList from "./pages/nurse/childrenList";
 import PoliceDashboard from "./pages/police/policeDashboard";
-import ParentDashboard from "./pages/parent/ParentDashboard";
-import ParentVerification from "./pages/parent/ParentVerification";
-import MyChildren from "./pages/parent/MyChildren";
+
+// ✅ تم تعديل الحروف هنا لـ سمول لتطابق أسماء الملفات الحقيقية عندك
+import ParentDashboard from "./pages/parent/parentDashboard";
+import ParentVerification from "./pages/parent/parentVerification";
+import MyChildren from "./pages/parent/mychildren";
+
 import RegisterChildForm from "./pages/shared/RegisterChildForm";
 import VerificationLogsShared from "./pages/shared/VerificationLogs";
 import NurseLayout from "./components/nurseLayout";
-import AdminLayout from "./components/AdminLayout";
+
+// ✅ تم تعديل الـ adminLayout لـ حرف سمول ليطابق اسم الملف الحقيقي
+import AdminLayout from "./components/adminLayout";
 import PoliceLayout from "./components/policeLayout";
 
 
@@ -40,189 +45,189 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route 
-            path="/admin/dashboard" 
+          <Route
+            path="/admin/dashboard"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminDashboard />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/members/list" 
+          <Route
+            path="/admin/members/list"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <UserList />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/members/add" 
+          <Route
+            path="/admin/members/add"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AddUser />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/profile" 
+          <Route
+            path="/admin/profile"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <Profile layout={AdminLayout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/settings" 
+          <Route
+            path="/admin/settings"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <Settings />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/verification-logs" 
+          <Route
+            path="/admin/verification-logs"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <VerificationLogs />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/notifications" 
+          <Route
+            path="/admin/notifications"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <NotificationsPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/missing-children" 
+          <Route
+            path="/admin/missing-children"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <VerificationLogsShared layout={AdminLayout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/children" 
+          <Route
+            path="/admin/children"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminChildrenList />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/children/register" 
+          <Route
+            path="/admin/children/register"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <RegisterChildForm layout={AdminLayout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/report-missing" 
+          <Route
+            path="/admin/report-missing"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <ReportMissing />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/organizations" 
+          <Route
+            path="/admin/organizations"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <Organization />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/organizations/hospital" 
+          <Route
+            path="/admin/organizations/hospital"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <OrganizationHospital />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/organizations/police" 
+          <Route
+            path="/admin/organizations/police"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <OrganizationPolice />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/admin/roles" 
+          <Route
+            path="/admin/roles"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <RolesPermissions />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/nurse/dashboard" 
+          <Route
+            path="/nurse/dashboard"
             element={
               <ProtectedRoute allowedRoles={['nurse', 'admin']}>
                 <NurseDashboard />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/nurse/children/list" 
+          <Route
+            path="/nurse/children/list"
             element={
               <ProtectedRoute allowedRoles={['nurse', 'admin']}>
                 <ChildrenList />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/nurse/children/register" 
+          <Route
+            path="/nurse/children/register"
             element={
               <ProtectedRoute allowedRoles={['nurse', 'admin']}>
                 <RegisterChildForm layout={NurseLayout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/police/dashboard" 
+          <Route
+            path="/police/dashboard"
             element={
               <ProtectedRoute allowedRoles={['police', 'admin']}>
                 <PoliceDashboard />
               </ProtectedRoute>
             }
           />
-          <Route 
-            path="/police/verification-logs" 
+          <Route
+            path="/police/verification-logs"
             element={
               <ProtectedRoute allowedRoles={['police', 'admin']}>
                 <VerificationLogsShared layout={PoliceLayout} />
               </ProtectedRoute>
             }
           />
-          <Route 
-            path="/parent/dashboard" 
+          <Route
+            path="/parent/dashboard"
             element={
               <ProtectedRoute allowedRoles={['user']}>
                 <ParentDashboard />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/parent/verification" 
+          <Route
+            path="/parent/verification"
             element={
               <ProtectedRoute allowedRoles={['user']}>
                 <ParentVerification />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/parent/children" 
+          <Route
+            path="/parent/children"
             element={
               <ProtectedRoute allowedRoles={['user']}>
                 <MyChildren />
               </ProtectedRoute>
-            } 
+            }
           />
         </Routes>
       </BrowserRouter>
