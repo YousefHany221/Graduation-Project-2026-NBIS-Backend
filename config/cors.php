@@ -1,17 +1,19 @@
 <?php
 
 return [
-    'paths' => ['api/*'],
+
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+    ],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'https://agent-6a3166dc6898fe1a2ec9--vocal-crumble-72c0bb.netlify.app',
+        'https://sweet-pavlova-379049.netlify.app',
     ],
 
-    'allowed_origins_patterns' => [
-        '#^https://.*\.netlify\.app$#',  // يسمح لأي netlify domain
-    ],
+    'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
