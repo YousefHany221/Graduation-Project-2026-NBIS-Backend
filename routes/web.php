@@ -57,6 +57,10 @@ Route::get('/clear-everything-nbis', function () {
         'status' => 'success',
         'message' => 'All caches cleared successfully, Yousef!'
     ]);
+        Route::get('/run-migrate', function () {
+            Artisan::call('migrate --force');
+            return "Database migrated successfully!";
+    });
 
 });
 
