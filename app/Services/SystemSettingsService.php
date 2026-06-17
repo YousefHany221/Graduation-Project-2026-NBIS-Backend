@@ -8,7 +8,7 @@ use App\Models\User;
 class SystemSettingsService
 {
     private const DEFAULTS = [
-        'language' => 'en',
+        'language' => 'ar', // 🌍 تغيير اللغة الافتراضية للنظام بالكامل لتكون العربية
         'notifications' => true,
         'email_alerts' => true,
         'two_factor' => false,
@@ -27,6 +27,16 @@ class SystemSettingsService
         }
 
         return $result;
+    }
+
+    /**
+     * 🌐 دالة سريعة لجلب لغة النظام الحالية فقط (مفيدة جداً للـ Middleware)
+     */
+    public function getSystemLanguage(): string
+    {
+        $setting = SystemSetting::query()->where('key', 'language')->first();
+
+        return $setting ? $setting->value : self::DEFAULTS['language'];
     }
 
     public function update(array $payload, User $actor): array
