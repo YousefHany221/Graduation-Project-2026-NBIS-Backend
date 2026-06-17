@@ -20,6 +20,7 @@ return [
 
     // رابط الـ Frontend الجديد بتاعك على Vercel عشان المتصفح يوافق يكلمه
     'allowed_origins' => [
+        'https://frontend-railway-nine.vercel.app',
         'https://frontend-railway-a5x29giaz-graduation-project-2026-nbis.vercel.app',
     ],
 
