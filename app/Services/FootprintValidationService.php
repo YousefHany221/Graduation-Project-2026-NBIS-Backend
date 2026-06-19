@@ -9,7 +9,9 @@ class FootprintValidationService
 {
     public function validate(UploadedFile $image, ?int $childId = null): array
     {
+        // أيضاً هنا يتم الاعتماد على متغير البيئة
         $baseUrl = rtrim((string) env('FOOTPRINT_AI_URL', ''), '/');
+
         if ($baseUrl === '') {
             return [
                 'reason' => 'ai_unavailable',

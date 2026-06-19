@@ -12,17 +12,17 @@ class ParentController extends Controller
 {
     public function __construct(
         private ParentChildService $parentChild,
-    ) {
-    }
+    ) {}
 
     /** عرض قائمة أطفال ولي الأمر */
     public function index(Request $request): JsonResponse
     {
         $children = $this->parentChild->childrenForParent($request->user());
 
-        return response()->json([
-            'data' => $children->map(fn (Child $child) => $this->parentChild->childPayload($child)),
-        ]);
+        // تم التعديل هنا: إرجاع المصفوفة مباشرة لتتوافق مع الفرونت إند (data || [])
+        return response()->json(
+            $children->map(fn(Child $child) => $this->parentChild->childPayload($child))
+        );
     }
 
     /** عرض تفاصيل طفل واحد */
@@ -31,7 +31,8 @@ class ParentController extends Controller
         $this->parentChild->assertParentOwnsChild($request->user(), $child);
 
         return response()->json([
-            'data' => $this->parentChild->childPayload($child),
+            'success' => true,
+            'data'    => $this->parentChild->childPayload($child),
         ]);
     }
 
@@ -40,7 +41,7 @@ class ParentController extends Controller
     {
         $validated = $request->validate([
             'child_id' => ['required', 'integer', 'exists:children,id'],
-            'notes' => ['nullable', 'string', 'max:1000'],
+            'notes'    => ['nullable', 'string', 'max:1000'],
         ]);
 
         $result = $this->parentChild->reportMissing(
@@ -51,15 +52,28 @@ class ParentController extends Controller
 
         if ($result['status'] === 'already_missing') {
             return response()->json([
+                'success' => false,
                 'message' => 'This child is already reported as missing.',
-                'data' => $this->parentChild->childPayload($result['child']),
+                'data'    => $this->parentChild->childPayload($result['child']),
             ], 422);
         }
 
         return response()->json([
+            'success' => true,
             'message' => 'Missing child report submitted successfully.',
-            'data' => $this->parentChild->childPayload($result['child']),
-            'notes' => $result['notes'] ?? null,
+            'data'    => $this->parentChild->childPayload($result['child']),
+            'notes'   => $result['notes'] ?? null,
         ], 201);
+    }
+
+    /** 🆕 دالة إضافية لتغطية طلب الفرونت إند لعرض بلاغات الفقدان والتحقق الخاصة بولي الأمر */
+    public function getReports(Request $request): JsonResponse
+    {
+        // تأكد من وجود علاقة في موديل الـ User باسم verificationLogs أو استبدلها بالمنطق الخاص بك
+        $reports = \App\Models\VerificationLog::where('user_id', $request->user()->id)
+            ->latest()
+            ->get();
+
+        return response()->json($reports);
     }
 }

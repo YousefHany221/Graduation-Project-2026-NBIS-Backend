@@ -7,6 +7,9 @@ use App\Http\Controllers\Api\ParentController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\MobileAuthController;
 use App\Http\Controllers\Api\MobileChildController;
+use App\Http\Controllers\NurseDashboardController;
+use App\Http\Controllers\PoliceDashboardController;
+use App\Http\Controllers\PoliceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,8 +35,9 @@ Route::middleware('auth:sanctum')->group(function () {
 */
 Route::middleware(['auth:sanctum', 'role:user'])->group(function () {
     Route::get('/my-children', [ParentController::class, 'index']);
-    Route::get('/my-children/{child}', [ParentController::class, 'show']);
-    Route::post('/missing-reports', [ParentController::class, 'reportMissing']);
+    Route::get('/parent/child-details/{child}', [ParentController::class, 'show']); // مسار التفاصيل المتوافق مع الفرونت
+    Route::post('/report-missing', [ParentController::class, 'reportMissing']); // مسار الإبلاغ المتوافق مع الفرونت
+    Route::get('/parent/reports', [ParentController::class, 'getReports']); // 🆕 جلب تقارير ولي الأمر لصفحة ParentVerification
     Route::post('/children/register-by-parent', [ChildController::class, 'storeByParent']);
 });
 
@@ -46,18 +50,31 @@ Route::middleware(['auth:sanctum', 'role:nurse,admin'])->group(function () {
     Route::post('/children/register', [ChildController::class, 'store']);
     Route::get('/children', [ChildController::class, 'index']);
     Route::get('/children/{child}', [ChildController::class, 'show']);
+
+    // الـ Route المربوط بالـ React Dashboard ليرجع الإحصائيات لايف للممرضة
+    Route::get('/nurse/dashboard', [NurseDashboardController::class, 'index']);
 });
 
 /*
 |--------------------------------------------------------------------------
-| شرطة / أدمن — بحث وسجلات التحقق (ربط الـ AI)
+| شرطة / أدمن — لوحة التحكم وبحث وسجلات التحقق (ربط الـ AI)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'role:police,admin'])->group(function () {
+    // 🆕 لوحة تحكم الشرطة والإحصائيات والبحث الخاص بالشرطة المتوافق مع PoliceDashboard.jsx
+    Route::get('/police/dashboard', [PoliceDashboardController::class, 'index']);
+    Route::get('/police/search', [PoliceController::class, 'search']);
+
     Route::post('/children/text-search', [ChildController::class, 'textSearch']);
     Route::post('/children/search-by-footprint', [ChildController::class, 'searchByFootprint']);
     Route::post('/children/validate-footprint', [ChildController::class, 'validateFootprint']);
+
+    // 🆕 تم ضبط هذا المسار ليتوافق تماماً مع fetch بقائمة السجلات في VerificationLogs.jsx
+    Route::get('/logs', [AdminController::class, 'verificationLogs']);
     Route::get('/verification-logs', [AdminController::class, 'verificationLogs']);
+
+    // 🎯 الـ Route المربوط بـ المودال لاستقبال البيانات والملفات حية من الـ Hub بالفرونت إند
+    Route::post('/children/register-found', [ChildController::class, 'registerFound']);
 });
 
 /*
@@ -66,9 +83,6 @@ Route::middleware(['auth:sanctum', 'role:police,admin'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
-    // Admin missing reports
-    Route::post('/missing-reports', [ParentController::class, 'reportMissing']);
-
     // Dashboard stats
     Route::get('/admin/dashboard/stats', [AdminController::class, 'dashboardStats']);
     Route::get('/admin/dashboard/children', [AdminController::class, 'childrenOverview']);
@@ -82,7 +96,6 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     // Children management
     Route::get('/admin/children', [AdminController::class, 'children']);
     Route::delete('/admin/children/{child}', [AdminController::class, 'deleteChild']);
-    Route::get('/admin/verification-logs', [AdminController::class, 'verificationLogs']);
 
     // Settings
     Route::get('/admin/settings', [AdminController::class, 'settings']);
@@ -97,17 +110,16 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-|  روابط الموبايل المخصصة (Mobile Application APIs)
+| روابط الموبايل المخصصة (Mobile Application APIs)
 |--------------------------------------------------------------------------
 */
 
-//  1. روابط الحسابات المفتوحة للموبايل (بدون Token)
+// 1. روابط الحسابات المفتوحة للموبايل (بدون Token)
 Route::post('/mobile/login', [MobileAuthController::class, 'login']);
 Route::post('/mobile/register', [MobileAuthController::class, 'register']);
 
-//  2. روابط الموبايل المحمية (تتطلب Token من Sanctum)
+// 2. روابط الموبايل المحمية (تتطلب Token من Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
-    // روابط الحساب
     Route::post('/mobile/logout', [MobileAuthController::class, 'logout']);
 
     // روابط الأطفال والبحث من الموبايل

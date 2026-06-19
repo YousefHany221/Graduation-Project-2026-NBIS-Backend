@@ -1,224 +1,56 @@
-<?php
-
-namespace App\Http\Controllers\Api;
-
-use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\LoginRequest;
-use App\Http\Requests\Api\RegisterRequest;
-use App\Models\Child;
-use App\Models\User;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
-
-class AuthController extends Controller
+/**
+* تسجيل طفل مفقود أو معثور عليه عبر الـ Nodes (Police / Nurse / Admin)
+*/
+public function registerFound(Request $request): JsonResponse
 {
-    private const ALLOWED_ROLES = ['user', 'nurse', 'police', 'admin'];
-    private const DEFAULT_ACCOUNT_SETTINGS = [
-        'language' => 'en',
-        'notifications' => true,
-        'email_alerts' => true,
-        'two_factor' => false,
-        'login_alerts' => false,
-        'session_timeout' => 30,
-    ];
+// 🎯 معالجة تضارب المسميات بين الفرونتيند والباكيند فورياً
+if ($request->has('child_name') && !$request->has('name')) {
+$request->merge(['name' => $request->input('child_name')]);
+}
+if ($request->has('child_name') && !$request->has('name_en')) {
+$request->merge(['name_en' => $request->input('child_name')]);
+}
 
-    /**
-     * تطبيق ولي الأمر: إنشاء حساب جديد .
-     */
-    public function register(RegisterRequest $request): JsonResponse
-    {
-        $validated = $request->validated();
+$validated = $request->validate([
+'name' => ['required', 'string', 'max:255'],
+'name_en' => ['nullable', 'string', 'max:255'],
+'mother_name' => ['nullable', 'string', 'max:255'],
+'estimated_age' => ['nullable', 'string', 'max:50'],
+'gender' => ['nullable', 'in:male,female'],
+'found_location' => ['nullable', 'string', 'max:255'],
+'notes' => ['nullable', 'string'],
+'child_photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
+'footprint' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
+]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'password' => $validated['password'],
-            'national_id' => $validated['national_id'] ?? null,
-            'role' => 'user',
-        ]);
+// معالجة وحفظ الصور المرفوعة
+$childPhotoPath = null;
+if ($request->hasFile('child_photo')) {
+$childPhotoPath = $request->file('child_photo')->store('children/photos', 'public');
+}
 
-        $this->linkExistingChildrenToParent($user);
+$footprintPath = null;
+if ($request->hasFile('footprint')) {
+$footprintPath = $request->file('footprint')->store('children/footprints', 'public');
+}
 
-        $token = $user->createToken('mobile')->plainTextToken;
+// إنشاء سجل الطفل بالحالة الافتراضية المناسبة للبلاغ
+$child = Child::create([
+'name' => $validated['name'],
+'name_en' => $validated['name_en'] ?? $validated['name'],
+'mother_name' => $validated['mother_name'] ?? 'Unknown',
+'estimated_age' => $validated['estimated_age'],
+'gender' => $validated['gender'] ?? 'male',
+'found_location' => $validated['found_location'],
+'notes' => $validated['notes'],
+'child_photo_path' => $childPhotoPath,
+'footprint_path' => $footprintPath,
+'status' => 'pending' // يبدأ كـ معلق تحت الفحص والمطابقة
+]);
 
-        return response()->json([
-            'message' => 'Account created successfully.',
-            'user' => $this->userPayload($user),
-            'token' => $token,
-        ], 201);
-    }
-
-    /** تسجيل دخول — جميع الأدوار (React / mobile) */
-    public function login(LoginRequest $request): JsonResponse
-    {
-        $validated = $request->validated();
-        $throttleKey = Str::lower($validated['email']) . '|' . $request->ip();
-
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
-
-            return response()->json([
-                'message' => "Too many login attempts. Try again in {$seconds} seconds.",
-            ], 429);
-        }
-
-        $user = User::where('email', $validated['email'])->first();
-
-        if (! $user || ! Hash::check($validated['password'], $user->password)) {
-            RateLimiter::hit($throttleKey, 60);
-            return response()->json([
-                'message' => 'The provided credentials are incorrect.',
-            ], 401);
-        }
-
-        if (! in_array($user->role, self::ALLOWED_ROLES, true)) {
-            RateLimiter::hit($throttleKey, 60);
-            return response()->json([
-                'message' => 'This account role is not allowed to sign in.',
-            ], 403);
-        }
-
-        if ($user->role === 'user') {
-            $this->linkExistingChildrenToParent($user);
-        }
-
-        RateLimiter::clear($throttleKey);
-        $token = $user->createToken('api')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Logged in successfully.',
-            'user' => $this->userPayload($user),
-            'token' => $token,
-        ]);
-    }
-
-    /** المستخدم الحالي (نفس شكل register/login) */
-    public function me(Request $request): JsonResponse
-    {
-        return response()->json([
-            'user' => $this->userPayload($request->user()),
-        ]);
-    }
-
-    /** Account settings for any authenticated role */
-    public function settings(Request $request): JsonResponse
-    {
-        $user = $request->user();
-        $settings = array_merge(
-            self::DEFAULT_ACCOUNT_SETTINGS,
-            is_array($user->settings) ? $user->settings : []
-        );
-
-        return response()->json([
-            'data' => $settings,
-        ]);
-    }
-
-    /** Update account settings for any authenticated role */
-    public function updateSettings(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'language' => ['nullable', 'string', 'in:en,ar,fr'],
-            'notifications' => ['nullable', 'boolean'],
-            'email_alerts' => ['nullable', 'boolean'],
-            'two_factor' => ['nullable', 'boolean'],
-            'login_alerts' => ['nullable', 'boolean'],
-            'session_timeout' => ['nullable', 'integer', 'in:0,15,30,60'],
-        ]);
-
-        $user = $request->user();
-        $current = array_merge(
-            self::DEFAULT_ACCOUNT_SETTINGS,
-            is_array($user->settings) ? $user->settings : []
-        );
-        $user->settings = array_merge($current, $validated);
-        $user->save();
-
-        return response()->json([
-            'message' => 'Settings updated successfully.',
-            'data' => $user->settings,
-        ]);
-    }
-
-    /** تسجيل خروج وحذف التوكن */
-    public function logout(Request $request): JsonResponse
-    {
-        $request->user()->currentAccessToken()?->delete();
-
-        return response()->json([
-            'message' => 'Logged out successfully.',
-        ]);
-    }
-
-    private function userPayload(User $user): array
-    {
-        return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'role' => $user->role,
-            'national_id' => $user->national_id,
-            'profile_photo_path' => $user->profile_photo_path,
-        ];
-    }
-
-    /** Update user profile including photo */
-    public function updateProfile(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        \Log::info('Profile update request:', [
-            'has_file' => $request->hasFile('profile_photo'),
-            'all_files' => $request->allFiles(),
-            'all_data' => $request->all(),
-            'content_type' => $request->header('Content-Type'),
-            'method' => $request->method(),
-        ]);
-
-        if ($request->has('name') && $request->input('name')) {
-            $user->name = $request->input('name');
-        }
-        if ($request->has('email') && $request->input('email')) {
-            $user->email = $request->input('email');
-        }
-        if ($request->has('phone') && $request->input('phone')) {
-            $user->phone = $request->input('phone');
-        }
-
-        if ($request->hasFile('profile_photo')) {
-            $photo = $request->file('profile_photo');
-            $path = $photo->store('profile-photos', 'public');
-            $user->profile_photo_path = $path;
-            \Log::info('Profile photo saved:', ['path' => $path]);
-        }
-
-        $user->save();
-
-        \Log::info('User saved:', ['profile_photo_path' => $user->profile_photo_path]);
-
-        return response()->json([
-            'message' => 'Profile updated successfully.',
-            'user' => $this->userPayload($user),
-        ]);
-    }
-
-    /**
-     * ربط سجلات المستشفى (سجلتها الممرضة) بولي الأمر لو الرقم القومي متطابق.
-     */
-    private function linkExistingChildrenToParent(User $user): void
-    {
-        if (! $user->national_id) {
-            return;
-        }
-
-        Child::query()
-            ->where('father_national_id', $user->national_id)
-            ->whereNull('user_id')
-            ->update(['user_id' => $user->id]);
-    }
+return response()->json([
+'status' => 'success',
+'message' => 'Infant record successfully injected into global registry.',
+'data' => $child
+], 201);
 }

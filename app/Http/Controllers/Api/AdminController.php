@@ -17,8 +17,7 @@ class AdminController extends Controller
     public function __construct(
         private SystemSettingsService $settingsService,
         private AdminNotificationService $notificationService,
-    ) {
-    }
+    ) {}
 
     /**
      * Get dashboard statistics
@@ -41,152 +40,48 @@ class AdminController extends Controller
                 'missing_children' => $missingChildren,
                 'total_organizations' => User::query()->whereIn('role', ['nurse', 'police'])->count(),
                 'system_alerts' => $systemAlerts,
-            ],
+            ]
         ]);
     }
 
     /**
-     * Get children overview for dashboard (shared with police)
+     * Get list of users with search mechanism
      */
-    public function childrenOverview(): JsonResponse
+    public function getUsers(Request $request): JsonResponse
     {
-        $children = Child::with('parent')
+        $search = $request->query('search');
+
+        $users = User::query()
+            ->when($search, function ($query, $search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('role', 'like', "%{$search}%");
+            })
             ->orderBy('created_at', 'desc')
-            ->take(10)
-            ->get()
-            ->map(function ($child) {
-                return [
-                    'id' => $child->id,
-                    'name' => $child->name,
-                    'mother_name' => $child->mother_name,
-                    'father_name' => $child->father_name,
-                    'father_phone' => $child->father_phone,
-                    'father_national_id' => $child->father_national_id,
-                    'gender' => $child->gender,
-                    'birth_date' => $child->birth_date,
-                    'estimated_age' => $child->estimated_age,
-                    'nfc_tag_id' => $child->nfc_tag_id,
-                    'found_location' => $child->found_location,
-                    'date_found' => $child->date_found,
-                    'notes' => $child->notes,
-                    'status' => $child->status,
-                    'created_at' => $child->created_at->format('Y-m-d'),
-                    'child_photo_path' => $child->child_photo_path,
-                    'footprint_path' => $child->footprint_path,
-                    'parent' => $child->parent ? [
-                        'id' => $child->parent->id,
-                        'name' => $child->parent->name,
-                        'phone' => $child->parent->phone,
-                    ] : null,
-                ];
-            });
+            ->get();
 
         return response()->json([
-            'data' => $children,
+            'status' => 'success',
+            'data' => $users
         ]);
     }
 
     /**
-     * Get verification logs (shared with police)
-     */
-    public function verificationLogs(): JsonResponse
-    {
-        $logs = Child::with(['parent'])
-            ->orderBy('updated_at', 'desc')
-            ->get()
-            ->map(function ($child) {
-                return [
-                    'id' => $child->id,
-                    'child_name' => $child->name,
-                    'type' => $child->user_id ? 'parent' : 'admin',
-                    'verified_by' => $child->parent?->name ?? 'Admin',
-                    'status' => $child->status,
-                    'date' => $child->updated_at?->format('Y-m-d') ?? $child->created_at?->format('Y-m-d'),
-                    'child_photo_path' => $child->child_photo_path,
-                    'footprint_path' => $child->footprint_path,
-                    'gender' => $child->gender,
-                    'birth_date' => $child->birth_date,
-                    'estimated_age' => $child->estimated_age,
-                    'mother_name' => $child->mother_name,
-                    'father_name' => $child->father_name,
-                    'father_phone' => $child->father_phone,
-                    'father_national_id' => $child->father_national_id,
-                    'nfc_tag_id' => $child->nfc_tag_id,
-                    'found_location' => $child->found_location,
-                    'date_found' => $child->date_found,
-                    'notes' => $child->notes,
-                    'parent' => $child->parent ? [
-                        'id' => $child->parent->id,
-                        'name' => $child->parent->name,
-                        'phone' => $child->parent->phone,
-                    ] : null,
-                ];
-            });
-
-        return response()->json([
-            'data' => $logs,
-        ]);
-    }
-
-    /**
-     * Get all users with filters
-     */
-    public function users(Request $request): JsonResponse
-    {
-        $request->validate([
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
-        $query = User::query();
-
-        // Search filter
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        // Role filter
-        if ($request->has('role')) {
-            $query->where('role', $request->role);
-        }
-
-        // Use pagination to avoid memory issues
-        $perPage = (int) $request->integer('per_page', 50);
-        $users = $query->latest()->paginate($perPage);
-
-        $mappedUsers = $users->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-                'status' => 'active',
-                'created_at' => $user->created_at ? $user->created_at->format('Y-m-d') : null,
-                'last_login' => $user->updated_at ? $user->updated_at->diffForHumans() : null,
-            ];
-        });
-
-        return response()->json([
-            'data' => $mappedUsers,
-        ]);
-    }
-
-    /**
-     * Create a new user
+     * Create a new authorized node user
      */
     public function createUser(Request $request): JsonResponse
     {
+        // دمج ودعم استقبال الاسم سواء أرسله الفرونتيند كـ fullName أو name
+        if ($request->has('fullName') && !$request->has('name')) {
+            $request->merge(['name' => $request->input('fullName')]);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'phone' => ['required', 'string', 'max:15'],
-            'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'in:admin,nurse,police,user'],
-            'status' => ['nullable', 'in:active,inactive'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'phone' => ['required', 'string', 'max:20'],
+            'password' => ['required', 'string', 'min:6'],
+            'role' => ['required', 'string', 'in:admin,nurse,police,user'],
         ]);
 
         $user = User::create([
@@ -198,201 +93,82 @@ class AdminController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'User created successfully.',
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-            ],
-        ], 201);
+            'status' => 'success',
+            'message' => 'System node user provisioned successfully.',
+            'data' => $user
+        ], 210);
     }
 
     /**
-     * Update a user
+     * Update existing node user credentials
      */
     public function updateUser(Request $request, User $user): JsonResponse
     {
-        if ($request->user()?->id === $user->id) {
-            return response()->json([
-                'message' => 'You cannot edit the currently logged-in account from this screen.',
-            ], 403);
-        }
-
-        if ($user->role === 'admin') {
-            return response()->json([
-                'message' => 'Admins cannot edit other admin accounts.',
-            ], 403);
+        if ($request->has('fullName') && !$request->has('name')) {
+            $request->merge(['name' => $request->input('fullName')]);
         }
 
         $validated = $request->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'unique:users,email,' . $user->id],
-            'phone' => ['nullable', 'string', 'max:15'],
-            'role' => ['nullable', 'in:admin,nurse,police,user'],
-            'status' => ['nullable', 'in:active,inactive'],
+            'name' => ['p_filled', 'string', 'max:255'],
+            'email' => ['p_filled', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'password' => ['nullable', 'string', 'min:6'],
+            'role' => ['p_filled', 'string', 'in:admin,nurse,police,user'],
         ]);
 
-        if (isset($validated['name'])) $user->name = $validated['name'];
-        if (isset($validated['email'])) $user->email = $validated['email'];
-        if (isset($validated['phone'])) $user->phone = $validated['phone'];
-        if (isset($validated['role'])) $user->role = $validated['role'];
-        if (isset($validated['password'])) $user->password = Hash::make($validated['password']);
+        if (isset($validated['password']) && !empty($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
+        } else {
+            unset($validated['password']);
+        }
 
-        $user->save();
+        $user->update($validated);
 
         return response()->json([
-            'message' => 'User updated successfully.',
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-            ],
+            'status' => 'success',
+            'message' => 'User credentials updated inside nodes.',
+            'data' => $user
         ]);
     }
 
     /**
-     * Delete a user
+     * Destroy / Revoke node member account
      */
-    public function deleteUser(Request $request, User $user): JsonResponse
+    public function deleteUser(User $user): JsonResponse
     {
-        if ($request->user()?->id === $user->id) {
-            return response()->json([
-                'message' => 'You cannot delete the currently logged-in account.',
-            ], 403);
-        }
-
-        if ($user->role === 'admin') {
-            return response()->json([
-                'message' => 'Admins cannot delete other admin accounts.',
-            ], 403);
-        }
-
         $user->delete();
 
         return response()->json([
-            'message' => 'User deleted successfully.',
+            'status' => 'success',
+            'message' => 'User access token revoked completely.'
         ]);
     }
 
     /**
-     * Get all children with filters
+     * Load recent children registrations
      */
-    public function children(Request $request): JsonResponse
+    public function loadChildren(): JsonResponse
     {
-        $query = Child::with('parent');
-
-        // Search filter
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('mother_name', 'like', "%{$search}%")
-                  ->orWhere('father_name', 'like', "%{$search}%");
-            });
-        }
-
-        // Status filter
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $children = $query->latest()->get()->map(function ($child) {
-            return [
-                'id' => $child->id,
-                'name' => $child->name,
-                'mother_name' => $child->mother_name,
-                'father_name' => $child->father_name,
-                'father_phone' => $child->father_phone,
-                'father_national_id' => $child->father_national_id,
-                'gender' => $child->gender,
-                'birth_date' => $child->birth_date,
-                'estimated_age' => $child->estimated_age,
-                'nfc_tag_id' => $child->nfc_tag_id,
-                'found_location' => $child->found_location,
-                'date_found' => $child->date_found,
-                'notes' => $child->notes,
-                'status' => $child->status,
-                'created_at' => $child->created_at->diffForHumans(),
-                'child_photo_path' => $child->child_photo_path,
-                'footprint_path' => $child->footprint_path,
-                'parent' => $child->parent ? [
-                    'id' => $child->parent->id,
-                    'name' => $child->parent->name,
-                    'phone' => $child->parent->phone,
-                ] : null,
-            ];
-        });
-
+        $children = Child::orderBy('created_at', 'desc')->take(10)->get();
         return response()->json([
-            'data' => $children,
-        ]);
-    }
-
-    /**
-     * Delete a child
-     */
-    public function deleteChild(Child $child): JsonResponse
-    {
-        $child->delete();
-
-        return response()->json([
-            'message' => 'Child deleted successfully.',
-        ]);
-    }
-
-    /**
-     * Get system settings
-     */
-    public function settings(): JsonResponse
-    {
-        return response()->json([
-            'data' => $this->settingsService->getAll(),
-        ]);
-    }
-
-    /**
-     * Update system settings
-     */
-    public function updateSettings(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'language' => ['nullable', 'string', 'in:en,ar,fr'],
-            'notifications' => ['nullable', 'boolean'],
-            'email_alerts' => ['nullable', 'boolean'],
-            'two_factor' => ['nullable', 'boolean'],
-            'login_alerts' => ['nullable', 'boolean'],
-            'session_timeout' => ['nullable', 'integer', 'in:0,15,30,60'],
-        ]);
-
-        $updatedSettings = $this->settingsService->update($validated, $request->user());
-
-        return response()->json([
-            'message' => 'Settings updated successfully.',
-            'data' => $updatedSettings,
+            'status' => 'success',
+            'data' => $children
         ]);
     }
 
     public function notifications(Request $request): JsonResponse
     {
-        $request->validate([
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
-        $perPage = (int) $request->integer('per_page', 20);
-        $items = $this->notificationService->listPaginated($perPage);
+        $items = AdminNotification::query()
+            ->orderBy('created_at', 'desc')
+            ->paginate($request->integer('per_page', 15));
 
         return response()->json([
-            'data' => $items->map(function (AdminNotification $notification) {
+            'data' => collect($items->items())->map(function ($notification) {
                 return [
                     'id' => $notification->id,
                     'title' => $notification->title,
                     'message' => $notification->message,
-                    'level' => $notification->level,
-                    'action_url' => $notification->action_url,
+                    'type' => $notification->type,
                     'is_read' => (bool) $notification->read_at,
                     'read_at' => $notification->read_at?->toIso8601String(),
                     'created_at' => $notification->created_at?->toIso8601String(),

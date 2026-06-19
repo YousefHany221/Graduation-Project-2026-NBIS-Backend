@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Services\ParentChildService;
+use App\Models\Child;
 use Illuminate\Http\Request;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 
 /**
  * لوحة ولي الأمر (ويب Breeze + Blade) — اختيارية أثناء الانتقال إلى React.
@@ -13,24 +16,42 @@ class ParentDashboardController extends Controller
 {
     public function __construct(
         private ParentChildService $parentChild,
-    ) {
-    }
+    ) {}
 
-    public function index()
+    /**
+     * عرض الصفحة الرئيسية للوحة التحكم
+     */
+    public function index(): View
     {
         return view('user.dashboard');
     }
 
-    /** عرض أطفال ولي الأمر الحالي */
-    public function children(Request $request)
+    /** * عرض أطفال ولي الأمر الحالي 
+     */
+    public function children(Request $request): View
     {
         $children = $this->parentChild->childrenForParent($request->user());
 
         return view('user.children', compact('children'));
     }
 
-    /** استقبال بلاغ طفل مفقود */
-    public function reportMissing(Request $request)
+    /**
+     * عرض تفاصيل طفل معين (تم حل الـ Error وإضافة int وتحديد نوع المرجوع هنا 🎯)
+     */
+    public function show(Request $request, int $child): View|\Illuminate\Http\JsonResponse
+    {
+        $childRecord = Child::find($child);
+
+        if (!$childRecord) {
+            abort(404, 'Child not found');
+        }
+
+        return view('user.child-details', compact('childRecord'));
+    }
+
+    /** * استقبال بلاغ طفل مفقود 
+     */
+    public function reportMissing(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'child_id' => ['required', 'integer', 'exists:children,id'],
@@ -43,7 +64,7 @@ class ParentDashboardController extends Controller
             $validated['notes'] ?? null
         );
 
-        if ($result['status'] === 'already_missing') {
+        if (isset($result['status']) && $result['status'] === 'already_missing') {
             return redirect()->route('user.children')
                 ->with('warning', __('This child is already reported as missing.'));
         }
