@@ -112,7 +112,6 @@ class ChildController extends Controller
             ]);
 
             // إرسال البصمة تلقائياً للـ AI لفحصها إذا تم رفعها
-            // إرسال البصمة تلقائياً للـ AI لفحصها إذا تم رفعها
             if ($request->hasFile('footprint')) {
                 try {
                     /** @var mixed $aiService */
@@ -170,13 +169,54 @@ class ChildController extends Controller
         }
     }
 
+    /**
+     * ✅ جلب قائمة الأطفال متوافقة ديناميكياً مع الـ Frontend وبصيغة الـ JSON الموحدة
+     */
     public function index(): JsonResponse
     {
-        return response()->json(Child::all(), 200);
+        $children = Child::latest()->get()->map(function ($child) {
+            return [
+                'id'         => $child->id,
+                'name'       => $child->name,
+                // ربط حقل الـ mother بـ mother_name المتواجد بقاعدة البيانات
+                'mother'     => $child->mother_name ?? 'N/A',
+                // جعل الحرف الأول كابيتال ليتوافق مع ألوان وتصميم الـ Badges في الـ React (Verified, Pending, Alerts)
+                'status'     => ucfirst($child->status ?? 'pending'),
+                // حساب وقت التحديث ديناميكياً بصيغة مقروءة للـ UI
+                'lastCheck'  => $child->updated_at ? $child->updated_at->diffForHumans() : 'Just Now',
+                'gender'     => $child->gender,
+                'found_location' => $child->found_location,
+                'notes'      => $child->notes,
+                'child_photo_path' => $child->child_photo_path,
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $children
+        ], 200);
     }
 
+    /**
+     * ✅ عرض تفاصيل طفل محدد منسقة بالكامل
+     */
     public function show(Child $child): JsonResponse
     {
-        return response()->json($child, 200);
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'id'         => $child->id,
+                'name'       => $child->name,
+                'mother'     => $child->mother_name ?? 'N/A',
+                'father_name' => $child->father_name,
+                'father_phone' => $child->father_phone,
+                'status'     => ucfirst($child->status ?? 'pending'),
+                'lastCheck'  => $child->updated_at ? $child->updated_at->diffForHumans() : 'Just Now',
+                'gender'     => $child->gender,
+                'found_location' => $child->found_location,
+                'notes'      => $child->notes,
+                'child_photo_path' => $child->child_photo_path,
+            ]
+        ], 200);
     }
 }
