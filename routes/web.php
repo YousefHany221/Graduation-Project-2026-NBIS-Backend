@@ -24,14 +24,10 @@ Route::get('/', function () {
     ]);
 });
 
-// NBIS React demo (no auth) — Admin & Police dashboards
+// NBIS React demo (no auth)
 Route::get('/demo/{any?}', function () {
     return view('demo-react');
 })->where('any', '.*')->name('demo');
-
-
-
-
 
 Route::get('/run-migrate', function () {
     try {
@@ -46,7 +42,6 @@ Route::get('/run-migrate', function () {
             'message' => $e->getMessage()
         ], 500);
     }
-
 });
 
 Route::get('/clear-everything-nbis', function () {
@@ -57,67 +52,4 @@ Route::get('/clear-everything-nbis', function () {
         'status' => 'success',
         'message' => 'All caches cleared successfully, Yousef!'
     ]);
-        Route::get('/run-migrate', function () {
-            Artisan::call('migrate --force');
-            return "Database migrated successfully!";
-    });
-
 });
-
-// Web dashboard routes disabled - using React frontend
-// Uncomment these if you need Blade-based dashboards
-/*
-Route::middleware(['auth', 'verified'])->group(function () {
-
-    // المسار العام بعد تسجيل الدخول
-    Route::get('/dashboard', function () {
-        $role = auth()->user()->role;
-        return match ($role) {
-            'admin', 'nurse', 'police', 'user' => redirect()->route("{$role}.dashboard"),
-            default => abort(403, 'Unknown role.'),
-        };
-    })->name('dashboard');
-});
-
-// المسارات المشتركة (تعديل الحساب)
-Route::middleware('auth', 'verified')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-
-// --- 🏥 منطقة الممرضة (Nurse Page) ---
-// الصفحة نفسها للممرضة فقط — الأدمن عنده داشبورد منفصلة
-Route::middleware(['auth', 'verified', 'role:nurse'])->group(function () {
-    Route::get('/nurse/dashboard', [NurseDashboardController::class, 'index'])->name('nurse.dashboard');
-});
-
-// --- 👮 منطقة الشرطة (Police Page) ---
-Route::middleware(['auth', 'verified', 'role:police'])->group(function () {
-    Route::get('/police/dashboard', [PoliceDashboardController::class, 'index'])->name('police.dashboard');
-});
-
-// --- 👨‍👩‍👧 منطقة المستخدم/الأهل (User/Parent Pages) ---
-Route::middleware(['auth', 'verified', 'role:user'])->group(function () {
-    Route::get('/user/dashboard', [ParentDashboardController::class, 'index'])->name('user.dashboard');
-    Route::get('/user/children', [ParentDashboardController::class, 'children'])->name('user.children');
-    Route::post('/user/report-missing', [ParentDashboardController::class, 'reportMissing'])->name('user.reportMissing');
-});
-
-// --- 🛡️ منطقة الأدمن (Admin Page) ---
-Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
-    Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
-});
-
-// --- ⚡ الأكشنز المشتركة (Shared Actions) ---
-Route::middleware(['auth', 'verified', 'role:nurse,admin'])->group(function () {
-    Route::get('/children/create', [BabyController::class, 'create'])->name('children.create');
-    Route::post('/children/store', [BabyController::class, 'store'])->name('children.store');
-});
-
-Route::middleware(['auth', 'verified', 'role:police,admin'])->group(function () {
-    Route::post('/children/search', [PoliceController::class, 'search'])->name('children.search');
-});
-*/
-
-// require __DIR__ . '/auth.php';

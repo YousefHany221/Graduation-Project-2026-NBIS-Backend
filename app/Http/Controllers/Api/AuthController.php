@@ -1,56 +1,136 @@
-/**
-* تسجيل طفل مفقود أو معثور عليه عبر الـ Nodes (Police / Nurse / Admin)
-*/
-public function registerFound(Request $request): JsonResponse
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+
+class AuthController extends Controller
 {
-// 🎯 معالجة تضارب المسميات بين الفرونتيند والباكيند فورياً
-if ($request->has('child_name') && !$request->has('name')) {
-$request->merge(['name' => $request->input('child_name')]);
-}
-if ($request->has('child_name') && !$request->has('name_en')) {
-$request->merge(['name_en' => $request->input('child_name')]);
-}
+    /**
+     * تسجيل مستخدم جديد (Register)
+     */
+    public function register(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'role'     => 'nullable|string|in:user,nurse,police,admin'
+        ]);
 
-$validated = $request->validate([
-'name' => ['required', 'string', 'max:255'],
-'name_en' => ['nullable', 'string', 'max:255'],
-'mother_name' => ['nullable', 'string', 'max:255'],
-'estimated_age' => ['nullable', 'string', 'max:50'],
-'gender' => ['nullable', 'in:male,female'],
-'found_location' => ['nullable', 'string', 'max:255'],
-'notes' => ['nullable', 'string'],
-'child_photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
-'footprint' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
-]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
-// معالجة وحفظ الصور المرفوعة
-$childPhotoPath = null;
-if ($request->hasFile('child_photo')) {
-$childPhotoPath = $request->file('child_photo')->store('children/photos', 'public');
-}
+        try {
+            /** @var \App\Models\User $user */
+            $user = User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+                'role'     => $request->role ?? 'user',
+            ]);
 
-$footprintPath = null;
-if ($request->hasFile('footprint')) {
-$footprintPath = $request->file('footprint')->store('children/footprints', 'public');
-}
+            // الآن سيتعرف الـ VS Code على الدالة فوراً بدون خطأ أحمر
+            $token = $user->createToken('auth_token')->plainTextToken;
 
-// إنشاء سجل الطفل بالحالة الافتراضية المناسبة للبلاغ
-$child = Child::create([
-'name' => $validated['name'],
-'name_en' => $validated['name_en'] ?? $validated['name'],
-'mother_name' => $validated['mother_name'] ?? 'Unknown',
-'estimated_age' => $validated['estimated_age'],
-'gender' => $validated['gender'] ?? 'male',
-'found_location' => $validated['found_location'],
-'notes' => $validated['notes'],
-'child_photo_path' => $childPhotoPath,
-'footprint_path' => $footprintPath,
-'status' => 'pending' // يبدأ كـ معلق تحت الفحص والمطابقة
-]);
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'User registered successfully',
+                'user'    => $user,
+                'token'   => $token
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Registration failed',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
 
-return response()->json([
-'status' => 'success',
-'message' => 'Infant record successfully injected into global registry.',
-'data' => $child
-], 201);
+    /**
+     * تسجيل الدخول (Login)
+     */
+    public function login(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email'    => 'required|string|email',
+            'password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'بيانات الاعتماد غير صحيحة، تأكد من البريد الإلكتروني أو كلمة المرور'
+            ], 401);
+        }
+
+        try {
+            // 🎯 السحر هنا: نخبر الـ Editor أن الكائن الراجع هو من موديل User لتختفي المشكلة P1013
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Logged in successfully',
+                'user'    => $user,
+                'token'   => $token
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Login process failed',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * جلب بيانات المستخدم الحالي (Me)
+     */
+    public function me(Request $request): JsonResponse
+    {
+        return response()->json([
+            'status' => 'success',
+            'user'   => $request->user()
+        ]);
+    }
+
+    /**
+     * تسجيل الخروج (Logout)
+     */
+    public function logout(Request $request): JsonResponse
+    {
+        try {
+            // حذف التوكنز الحالية للمستخدم
+            $request->user()->currentAccessToken()->delete();
+
+            // إنهاء الجلسة للـ Web
+            Auth::guard('web')->logout();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Logged out successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Logout failed',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
 }

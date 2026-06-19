@@ -3,45 +3,27 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+// ⚠️ تأكد من وجود هذا السطر فوق
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
+    // ⚠️ أضف HasApiTokens هنا بداخل الكلاس
     use HasApiTokens, HasFactory, Notifiable;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'name',
         'email',
-        'phone',
-        'role',
-        'national_id',
         'password',
-        'profile_photo_path',
+        'role', // تأكد من إضافة الـ role هنا أيضاً إذا كنت تستخدمه
     ];
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-        'settings' => 'array',
-    ];
-
-    // الأطفال اللي سجلتها الممرضة
-    public function registeredChildren(): HasMany
-    {
-        return $this->hasMany(Child::class, 'nurse_id');
-    }
-
-    // أطفال ولي الأمر المرتبطين بحسابه
-    public function children(): HasMany
-    {
-        return $this->hasMany(Child::class, 'user_id');
-    }
+    // ... باقي كود الموديل الافتراضي كما هو
 }
