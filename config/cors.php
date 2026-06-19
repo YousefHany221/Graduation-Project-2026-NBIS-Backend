@@ -13,15 +13,15 @@ return [
     |
     */
 
-    // المسارات التي سيطبق عليها الـ CORS (تشمل ملف الكوكيز والـ API والـ Login)
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout'],
+    // الحل السحري: تغطية جميع المسارات بلا استثناء لمنع أي CORS فجائي
+    'paths' => ['*'],
 
     'allowed_methods' => ['*'],
 
-    // رابط الـ Frontend الجديد بتاعك على Vercel عشان المتصفح يوافق يكلمه
+    // رابط الـ Frontend المعتمد
     'allowed_origins' => [
         'https://frontend-railway-nine.vercel.app',
-        'https://frontend-railway-a5x29giaz-graduation-project-2026-nbis.vercel.app',
+        'http://localhost:3000'
     ],
 
     'allowed_origins_patterns' => [],
@@ -32,7 +32,7 @@ return [
 
     'max_age' => 0,
 
-    // ⚠️ دي أهم واحدة.. لازم تكون true عشان الـ Cookies والـ Session بتاعت الـ Auth تشتغل
+    // تفعيل الـ Credentials لنقل الكوكيز والـ Sessions
     'supports_credentials' => true,
 
 ];
