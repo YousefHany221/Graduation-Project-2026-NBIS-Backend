@@ -16,12 +16,11 @@ return [
     // الحل السحري: تغطية جميع المسارات بلا استثناء لمنع أي CORS فجائي
     'paths' => ['*'],
 
-    'allowed_methods' => ['*'],
-
     // رابط الـ Frontend المعتمد
     'allowed_origins' => [
-        'https://frontend-railway-nine.vercel.app',
-        'http://localhost:3000'
+        'http://localhost:5173', // الـ Local الصح بتاع Vite
+        'http://127.0.0.1:5173', // لضمان تشغيل اللوكال من أي متصفح
+        'https://frontend-2-3nqd4phw9-graduation-project-2026-nbis.vercel.app', // دومين فيرسيل الجديد
     ],
 
     'allowed_origins_patterns' => [],
