@@ -19,7 +19,6 @@ class ParentController extends Controller
     {
         $children = $this->parentChild->childrenForParent($request->user());
 
-        // تم التعديل هنا: إرجاع المصفوفة مباشرة لتتوافق مع الفرونت إند (data || [])
         return response()->json(
             $children->map(fn(Child $child) => $this->parentChild->childPayload($child))
         );
@@ -66,10 +65,8 @@ class ParentController extends Controller
         ], 201);
     }
 
-    /** 🆕 دالة إضافية لتغطية طلب الفرونت إند لعرض بلاغات الفقدان والتحقق الخاصة بولي الأمر */
     public function getReports(Request $request): JsonResponse
     {
-        // تأكد من وجود علاقة في موديل الـ User باسم verificationLogs أو استبدلها بالمنطق الخاص بك
         $reports = \App\Models\VerificationLog::where('user_id', $request->user()->id)
             ->latest()
             ->get();

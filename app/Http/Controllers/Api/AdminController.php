@@ -71,7 +71,6 @@ class AdminController extends Controller
      */
     public function createUser(Request $request): JsonResponse
     {
-        // دمج ودعم استقبال الاسم سواء أرسله الفرونتيند كـ fullName أو name
         if ($request->has('fullName') && !$request->has('name')) {
             $request->merge(['name' => $request->input('fullName')]);
         }

@@ -7,10 +7,9 @@ use App\Http\Controllers\Api\ParentController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\MobileAuthController;
 use App\Http\Controllers\Api\MobileChildController;
-use App\Http\Controllers\NurseDashboardController;
-use App\Http\Controllers\PoliceDashboardController;
-use App\Http\Controllers\PoliceController;
-
+use App\Http\Controllers\Api\NurseDashboardController;
+use App\Http\Controllers\Api\PoliceDashboardController;
+use App\Http\Controllers\Api\PoliceController;
 
 /*
 |--------------------------------------------------------------------------

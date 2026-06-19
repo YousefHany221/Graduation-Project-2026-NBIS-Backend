@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Hash;
 
 class MobileAuthController extends Controller
 {
-    // تسجيل الدخول للموبايل
     public function login(Request $request)
     {
         $request->validate([
@@ -22,7 +21,7 @@ class MobileAuthController extends Controller
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'بيانات الدخول غير صحيحة'
+                'message' => 'Invalid credentials'
             ], 401);
         }
 
@@ -30,13 +29,12 @@ class MobileAuthController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'تم تسجيل الدخول بنجاح',
+            'message' => 'Login successful',
             'token' => $token,
             'user' => $user
         ], 200);
     }
 
-    // تسجيل حساب جديد للموبايل (مكانها الصح هنا!)
     public function register(Request $request)
     {
         $request->validate([
@@ -56,7 +54,7 @@ class MobileAuthController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'تم إنشاء الحساب بنجاح يا هندسة واهلاً بك في سيستم NBIS',
+            'message' => 'Account created successfully',
             'token' => $token,
             'user' => $user
         ], 201);

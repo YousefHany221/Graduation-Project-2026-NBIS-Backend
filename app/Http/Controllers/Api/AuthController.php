@@ -29,7 +29,6 @@ class AuthController extends Controller
         }
 
         try {
-            /** @var \App\Models\User $user */
             $user = User::create([
                 'name'     => $request->name,
                 'email'    => $request->email,
@@ -37,7 +36,6 @@ class AuthController extends Controller
                 'role'     => $request->role ?? 'user',
             ]);
 
-            // الآن سيتعرف الـ VS Code على الدالة فوراً بدون خطأ أحمر
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
@@ -72,13 +70,11 @@ class AuthController extends Controller
         if (!Auth::attempt($request->only('email', 'password'))) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'بيانات الاعتماد غير صحيحة، تأكد من البريد الإلكتروني أو كلمة المرور'
+                'message' => 'Invalid credentials'
             ], 401);
         }
 
         try {
-            // 🎯 السحر هنا: نخبر الـ Editor أن الكائن الراجع هو من موديل User لتختفي المشكلة P1013
-            /** @var \App\Models\User $user */
             $user = Auth::user();
 
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -115,10 +111,8 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         try {
-            // حذف التوكنز الحالية للمستخدم
             $request->user()->currentAccessToken()->delete();
 
-            // إنهاء الجلسة للـ Web
             Auth::guard('web')->logout();
 
             return response()->json([

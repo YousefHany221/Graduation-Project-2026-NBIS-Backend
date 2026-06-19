@@ -69,7 +69,6 @@ class ChildController extends Controller
      */
     public function registerFound(Request $request): JsonResponse
     {
-        // معالجة تضارب المسميات فورياً بين حقول الفرونت والباك
         if ($request->has('child_name') && !$request->has('name')) {
             $request->merge(['name' => $request->input('child_name')]);
         }
@@ -100,7 +99,6 @@ class ChildController extends Controller
                 'status'             => 'pending',
             ]);
 
-            // تسجيل الـ Verification Log
             VerificationLog::create([
                 'child_id'    => $child->id,
                 'user_id'     => Auth::id(),
@@ -111,23 +109,18 @@ class ChildController extends Controller
                 'date'        => date('Y-m-d'),
             ]);
 
-            // إرسال البصمة تلقائياً للـ AI لفحصها إذا تم رفعها
-            // إرسال البصمة تلقائياً للـ AI لفحصها إذا تم رفعها
             if ($request->hasFile('footprint')) {
                 try {
-                    /** @var mixed $aiService */
                     $aiService = $this->footprintAi;
 
-                    // ⚠️ تأكد أن اسم الدالة هنا يطابق ما هو مكتوب داخل FootprintAiService.php
                     $aiService->match($child, $request->file('footprint'));
                 } catch (\Exception $aiException) {
-                    // نلتقط خطأ الـ AI منفصلاً حتى لا ينهار حفظ الطفل الأساسي
                 }
             }
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Child registered & Log recorded successfully! 🎉',
+                'message' => 'Child registered & log recorded successfully.',
                 'data'   => $child
             ], 201);
         } catch (\Exception $e) {

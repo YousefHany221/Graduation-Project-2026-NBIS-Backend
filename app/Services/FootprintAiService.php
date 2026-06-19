@@ -10,7 +10,6 @@ class FootprintAiService
 {
     public function identify(UploadedFile $image): array
     {
-        // هنا يتم سحب الرابط من متغيرات البيئة (لا تلمس هذا السطر!)
         $baseUrl = rtrim((string) env('FOOTPRINT_AI_URL', ''), '/');
 
         if ($baseUrl === '') {
